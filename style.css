@@ -1,0 +1,13 @@
+canvas {
+  background-color: black;
+}
+body {
+  margin: 0;
+}
+h1 {
+  z-index: 1;
+  position: absolute;
+  color: white;
+  border: 3px solid white;
+  border-radius: 10px;
+}
