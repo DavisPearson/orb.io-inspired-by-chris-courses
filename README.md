@@ -1,4 +1,4 @@
-# orb.io
+# chris courses inspired game Orb.io
 this is a game I made with basic html, CSS, and JavaScript. inspired by Chris courses on YouTube
 
 
