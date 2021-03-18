@@ -9,6 +9,7 @@ let score = 0;
 let projSpeed = 13;
 let projSize = 10;
 let enemySpawnChance = 70;
+let powerUpSpawnChance = 40;
 let enemySpeed = 6;
 let playerSpeed = 4;
 let particleSpeed = 23;
@@ -29,13 +30,18 @@ let playerCol = "rgba(255, 255, 255, .5)";
 let playerStroke = "rgb(255, 255, 255)";
 let powerUpDurration = 350;
 let powerUpSpeed = 7;
+let waveIndex = 0;
+let shouldRunWave = false;
 let projectileCol = "rgba(0, 255, 255, .5)";
 let projectileStroke = "rgb(0, 255, 255)";
+let ambientParticleColor = "rgba(255, 255, 255, .8)";
 
 let rapidFire = false;
 let invincibleProjectiles = false;
 let homingProjectiles = false;
+let doubleProjectiles = false;
 const powerUpTypeArr = [
+  0,
   1,
   2,
   3,
@@ -81,7 +87,7 @@ window.addEventListener("resize", function () {
   canvas.height = window.innerHeight;
   canvas.width = window.innerWidth;
 });
-window.addEventListener("click", function (event) {
+window.addEventListener("mousedown", function (event) {
   let mouseX = event.clientX;
   let mouseY = event.clientY;
   let a = mouseX - player.x;
@@ -90,6 +96,9 @@ window.addEventListener("click", function (event) {
   let dx = Math.sin(c) * projSpeed;
   let dy = Math.cos(c) * projSpeed;
   player.shoot(dx, dy);
+  if (doubleProjectiles) {
+    player.shoot(-dx, -dy);
+  }
 });
 
 //particle function
@@ -110,10 +119,10 @@ const spawnParticles = (x, y, col, itterations) => {
 //projectile class
 
 class Projectile {
-  constructor(x, y, r, dx, dy) {
+  constructor(x, y, dx, dy) {
     this.x = x;
     this.y = y;
-    this.r = r;
+    this.r = projSize + player.damage / 8;
     this.dx = dx;
     this.dy = dy;
     this.age = 0;
@@ -213,6 +222,7 @@ const player = {
   r: playerSize,
   dx: 0,
   dy: 0,
+  hp: playerSize,
   damage: playerSize,
   draw() {
     c.beginPath();
@@ -222,13 +232,17 @@ const player = {
     c.lineWidth = this.r / 4;
     c.stroke();
     c.fill();
+    c.fillStyle = "rgba(0, 0, 0, 1)";
+    c.font = "17px Arial";
+    c.textAlign = "center";
+    c.fillText(this.hp.toString(), this.x, this.y + 5);
   },
   shoot(dx, dy) {
     c.beginPath();
     c.arc(this.x, this.y, projSize, 0, Math.PI * 2, false);
     c.fillStyle = projectileCol;
     c.fill();
-    entityArr.push(new Projectile(this.x, this.y, projSize, dx, dy));
+    entityArr.push(new Projectile(this.x, this.y, dx, dy));
   },
   update() {
     this.draw();
@@ -246,8 +260,8 @@ const player = {
         ) <= 0
       ) {
         spawnParticles(enemyArr[k].x, enemyArr[k].y, enemyArr[k].col, 12);
+        this.damage -= 15;
         enemyArr.splice(k, 1);
-        this.damage -= 10;
       }
     }
     for (let k = powerUpEnemyArr.length - 1; k >= 0; k--) {
@@ -267,15 +281,15 @@ const player = {
           powerUpEnemyArr[k].col,
           12
         );
+        this.damage -= 15;
         powerUpEnemyArr.splice(k, 1);
-        this.damage -= 10;
       }
     }
-    if (this.damage < this.r) {
-      this.r -= 1;
+    if (this.damage < this.hp) {
+      this.hp -= 1;
       spawnParticles(this.x, this.y, playerCol, 1);
     }
-    if (this.r < 5) {
+    if (this.hp < 1) {
       gameOver = true;
     }
     if (this.x + this.r <= 0) {
@@ -422,14 +436,13 @@ class Enemy {
     }
     if (this.r > this.damage) {
       this.r -= 2;
-      score += 2;
     }
     if (this.r <= 10) {
       enemyArr.splice(this.i, 1);
       spawnParticles(this.x, this.y, this.col, 20);
-      player.r += 1;
+      player.hp += 1;
       player.damage += 1;
-      score += Math.floor(player.r / 5);
+      score += 1;
     }
   }
 }
@@ -462,13 +475,13 @@ const createEnemy = () => {
       enemyArr.push(new Enemy(x, y, r, enemyCol));
     }
   } else if (k == 1) {
-    let m = Math.floor(Math.random() * 40);
+    let m = Math.floor(Math.random() * powerUpSpawnChance);
     if (m <= powerUpTypeArr.length - 1) {
       let r =
         Math.floor(Math.random() * (enemySizeMax - enemySizeMin)) +
         enemySizeMin;
-      let x = Math.random() * window.innerWidth;
-      let y = Math.floor(Math.random() * 2) * window.innerHeight;
+      let y = Math.random() * window.innerHeight;
+      let x = Math.floor(Math.random() * 2) * window.innerWidth;
       powerUpEnemyArr.push(new PowerUpEnemy(x, y, r, m));
     }
   }
@@ -490,20 +503,22 @@ class PowerUpEnemy {
     let num = Math.atan2(a, b);
     this.dx = Math.sin(num) * powerUpSpeed;
     this.dy = Math.cos(num) * powerUpSpeed;
-    if (this.type <= 5) {
+    if (this.type <= 6) {
       this.dx *= 1.5;
       this.dy *= 1.5;
     }
   }
   draw() {
-    if (this.type <= 5) {
-      this.col = "rgb(255, 255,255)";
+    if (this.type <= 6) {
+      this.col = "rgba(0,0,0,0)";
+      this.stroke = "rgb(0, 255, 255)";
     } else {
-      this.col = "rgb(0,0,0)";
+      this.col = "rgba(0,0,0,0)";
+      this.stroke = "rgb(206, 245, 66)";
     }
     c.beginPath();
     c.arc(this.x, this.y, this.r, 0, Math.PI * 2, false);
-    c.strokeStyle = "rgb(206, 245, 66)";
+    c.strokeStyle = this.stroke;
     c.lineWidth = 10;
     c.fillStyle = this.col;
     c.stroke();
@@ -526,19 +541,18 @@ class PowerUpEnemy {
       this.x + 200 < 0 ||
       this.x - 200 > window.innerWidth
     ) {
-      enemyPowerUpArr.splice(this.i, 1);
+      powerUpEnemyArr.splice(this.i, 1);
     }
     if (this.r > this.damage) {
       this.r -= 2;
-      score += 2;
     }
     if (this.r <= 10) {
       powerUpEnemyArr.splice(this.i, 1);
       powerUpArr.push(new PowerUp(this.type));
-      spawnParticles(this.x, this.y, "rgb(206, 245, 66)", 20);
-      player.r += 1;
+      spawnParticles(this.x, this.y, this.stroke, 20);
+      player.hp += 1;
       player.damage += 1;
-      score += Math.floor(player.r / 5);
+      score += 1;
     }
   }
 }
@@ -550,28 +564,47 @@ class PowerUp {
   }
   run() {
     if (this.type === 0) {
-      projSize = 30;
+      if (this.age == 0) {
+        projSize = 30;
+      }
       this.age++;
     } else if (this.type === 1) {
-      playerSpeed = 8;
-      playerStroke = "rgb(16, 45, 148)";
+      if (this.age == 0) {
+        playerSpeed = 8;
+        playerStroke = "rgb(16, 45, 148)";
+        playerCol = "rgba(16, 45, 148, .5)";
+      }
       this.age += 0.5;
     } else if (this.type === 2) {
-      rapidFire = true;
+      if (this.age == 0) {
+        rapidFire = true;
+      }
       this.age += 2;
     } else if (this.type === 3) {
-      invincibleProjectiles = true;
-      projectileCol = "rgba(206, 245, 66, .5)";
-      projectileStroke = "rgb(206, 245, 66)";
+      if (this.age == 0) {
+        invincibleProjectiles = true;
+        projectileCol = "rgba(206, 245, 66, .5)";
+        projectileStroke = "rgb(206, 245, 66)";
+      }
       this.age++;
     } else if (this.type == 4) {
-      projSpeed = 20;
-      projectileStroke = "rgb(16, 45, 148)";
-      this.age++;
+      if (this.age == 0) {
+        projSpeed = 26;
+        projectileStroke = "rgb(16, 45, 148)";
+        projectileCol = "rgba(16, 45, 148, .5)";
+      }
+      this.age += 0.6;
     } else if (this.type == 5) {
-      homingProjectiles = true;
-      projectileCol = "rgba(255. 3, 3, .5)";
-      projectileStroke = "rgb(255, 3, 3)";
+      if (this.age == 0) {
+        homingProjectiles = true;
+        projectileCol = "rgba(255, 3, 3, .5)";
+        projectileStroke = "rgb(255, 3, 3)";
+      }
+      this.age++;
+    } else if (this.type == 6) {
+      if (this.age == 0) {
+        doubleProjectiles = true;
+      }
       this.age += 0.6;
     }
   }
@@ -603,6 +636,8 @@ class PowerUp {
         homingProjectiles = false;
         projectileCol = "rgba(0, 255, 255, .5)";
         projectileStroke = "rgb(0, 255, 255)";
+      } else if (this.type == 6) {
+        doubleProjectiles = false;
       }
       powerUpArr.splice(this.i, 1);
     }
@@ -618,7 +653,7 @@ class AmbientParticle {
     this.x = window.innerWidth / 2 + dx * 20;
     this.y = window.innerHeight / 2 + dy * 20;
     this.r = 1;
-    this.col = "rgba(255, 255, 255, .8)";
+    this.col = ambientParticleColor;
   }
   draw() {
     c.beginPath();
@@ -659,6 +694,28 @@ const ambientBackground = () => {
   }
 };
 
+//wave function
+
+const runWave = () => {
+  if (waveIndex == 0) {
+    ambientParticleColor = "red";
+    enemySpawnChance = 700;
+    powerUpSpawnChance = 400;
+  }
+  if (waveIndex == 400) {
+    enemySpawnChance = 17;
+    powerUpSpawnChance = 60;
+  }
+  waveIndex++;
+  if (waveIndex > 2000) {
+    waveIndex = 0;
+    ambientParticleColor = "white";
+    enemySpawnChance = 70;
+    powerUpSpawnChance = 40;
+    shouldRunWave = false;
+  }
+};
+
 //game function
 
 const runFrame = () => {
@@ -667,12 +724,13 @@ const runFrame = () => {
     c.fillStyle = "rgba(0, 0, 0, 0.5)";
     c.fillRect(0, 0, canvas.width, canvas.height);
     createEnemy();
-    player.update();
+
     let scoreDisplay = document.querySelector("#scoreDisplay");
     scoreDisplay.innerHTML = score;
     for (let i = ambientParticleArr.length - 1; i >= 0; i--) {
       ambientParticleArr[i].update(i);
     }
+    player.update();
     for (let i = entityArr.length - 1; i >= 0; i--) {
       entityArr[i].update(i);
     }
@@ -688,11 +746,24 @@ const runFrame = () => {
     for (let i = powerUpEnemyArr.length - 1; i >= 0; i--) {
       powerUpEnemyArr[i].update(i);
     }
-
     if (rapidFire === true) {
       let randomX = (Math.random() - 0.5) * projSpeed;
       let randomY = (Math.random() - 0.5) * projSpeed;
       player.shoot(randomX, randomY);
+    }
+    if ((score !== 0 && score % 200 == 0) || score == 50) {
+      shouldRunWave = true;
+    }
+    if (shouldRunWave) {
+      runWave();
+    }
+    if (player.hp / 33 + 6 > enemySpeed) {
+      enemySpeed++;
+      powerUpSpeed++;
+    }
+    if (player.hp / 33 + 6 <= enemySpeed) {
+      enemySpeed--;
+      powerUpSpeed--;
     }
   }
 };
