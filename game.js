@@ -24,22 +24,55 @@ let particleAge = 30;
 let gameOver = false;
 let enemySizeMin = 15;
 let enemySizeMax = 45;
-let playerSize = 10;
-let playerCol = "rgb(255, 255, 255)";
-let playerStroke = "rgb(0, 255, 255)";
+let playerSize = 20;
+let playerCol = "rgba(255, 255, 255, .5)";
+let playerStroke = "rgb(255, 255, 255)";
 let powerUpDurration = 350;
 let powerUpSpeed = 7;
-let projectileCol = "rgba(0, 255, 255, 0.5)";
-let projectileStroke = "rgba(0, 255, 255, 0.5)";
+let projectileCol = "rgba(0, 255, 255, .5)";
+let projectileStroke = "rgb(0, 255, 255)";
 
 let rapidFire = false;
 let invincibleProjectiles = false;
-const powerUpTypeArr = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14];
+let homingProjectiles = false;
+const powerUpTypeArr = [
+  1,
+  2,
+  3,
+  4,
+  5,
+  6,
+  7,
+  8,
+  9,
+  10,
+  11,
+  12,
+  13,
+  14,
+  15,
+  16,
+  17,
+  18,
+  19,
+  20,
+];
+let tempArr = [];
 
 //colission detection function
 
 const colisionDetect = (x1, y1, r1, x2, y2, r2) => {
   return Math.sqrt(Math.pow(x1 - x2, 2) + Math.pow(y1 - y2, 2)) - (r1 + r2);
+};
+
+// distance formula
+
+const determineClosestObject = (x1, y1, array) => {
+  tempArr = [];
+  for (let i = 0; i < array.length; i++) {
+    tempArr.push(Math.pow(array[i].x - x1, 2) + Math.pow(array[i].y - y1, 2));
+  }
+  return tempArr.indexOf(Math.min(...tempArr));
 };
 
 //event listeners for resize and clicking
@@ -83,21 +116,50 @@ class Projectile {
     this.r = r;
     this.dx = dx;
     this.dy = dy;
+    this.age = 0;
   }
   draw() {
     c.beginPath();
     c.arc(this.x, this.y, this.r, 0, Math.PI * 2, false);
     c.strokeStyle = projectileStroke;
     c.fillStyle = projectileCol;
-    c.lineWidth = 4;
+    c.lineWidth = 5;
     c.stroke();
     c.fill();
   }
+  determineDirection() {
+    if (powerUpEnemyArr.length > 0 && this.age > 20) {
+      let index = determineClosestObject(this.x, this.y, powerUpEnemyArr);
+      if (powerUpEnemyArr[index]) {
+        let a = this.x - powerUpEnemyArr[index].x;
+        let b = this.y - powerUpEnemyArr[index].y;
+        let num = Math.atan2(a, b);
+        this.dx = Math.sin(num) * projSpeed * -1;
+        this.dy = Math.cos(num) * projSpeed * -1;
+        index = "";
+      }
+    } else if (enemyArr.length > 0 && this.age > 20) {
+      let index = determineClosestObject(this.x, this.y, enemyArr);
+      if (enemyArr[index]) {
+        let a = this.x - enemyArr[index].x;
+        let b = this.y - enemyArr[index].y;
+        let num = Math.atan2(a, b);
+        this.dx = Math.sin(num) * projSpeed * -1;
+        this.dy = Math.cos(num) * projSpeed * -1;
+        console.log(index);
+        index = "";
+      }
+    }
+  }
   update(i) {
+    if (homingProjectiles === true) {
+      this.determineDirection();
+    }
     this.i = i;
     this.x += this.dx;
     this.y += this.dy;
     this.draw();
+    this.age++;
     if (
       this.x - this.r > window.innerWidth ||
       this.x + this.r < 0 ||
@@ -157,7 +219,7 @@ const player = {
     c.arc(this.x, this.y, this.r, 0, Math.PI * 2, false);
     c.fillStyle = playerCol;
     c.strokeStyle = playerStroke;
-    c.lineWidth = 3;
+    c.lineWidth = this.r / 4;
     c.stroke();
     c.fill();
   },
@@ -211,7 +273,7 @@ const player = {
     }
     if (this.damage < this.r) {
       this.r -= 1;
-      spawnParticles(this.x, this.y, this.playerCol, 1);
+      spawnParticles(this.x, this.y, playerCol, 1);
     }
     if (this.r < 5) {
       gameOver = true;
@@ -428,9 +490,13 @@ class PowerUpEnemy {
     let num = Math.atan2(a, b);
     this.dx = Math.sin(num) * powerUpSpeed;
     this.dy = Math.cos(num) * powerUpSpeed;
+    if (this.type <= 5) {
+      this.dx *= 1.5;
+      this.dy *= 1.5;
+    }
   }
   draw() {
-    if (this.type <= 4) {
+    if (this.type <= 5) {
       this.col = "rgb(255, 255,255)";
     } else {
       this.col = "rgb(0,0,0)";
@@ -448,9 +514,7 @@ class PowerUpEnemy {
   }
   update(i) {
     this.i = i;
-    if (this.type <= 7) {
-      this.r++;
-    }
+
     this.determineDirection();
     this.x -= this.dx;
     this.y -= this.dy;
@@ -491,20 +555,24 @@ class PowerUp {
     } else if (this.type === 1) {
       playerSpeed = 8;
       playerStroke = "rgb(16, 45, 148)";
-      playerCol = "rgb(0,0,0)";
-      this.age++;
+      this.age += 0.5;
     } else if (this.type === 2) {
       rapidFire = true;
-      this.age++;
+      this.age += 2;
     } else if (this.type === 3) {
       invincibleProjectiles = true;
-      projectileCol = "rgb(206, 245, 66)";
+      projectileCol = "rgba(206, 245, 66, .5)";
+      projectileStroke = "rgb(206, 245, 66)";
       this.age++;
     } else if (this.type == 4) {
       projSpeed = 20;
-      projectileCol = "rgb(0,0,0)";
       projectileStroke = "rgb(16, 45, 148)";
       this.age++;
+    } else if (this.type == 5) {
+      homingProjectiles = true;
+      projectileCol = "rgba(255. 3, 3, .5)";
+      projectileStroke = "rgb(255, 3, 3)";
+      this.age += 0.6;
     }
   }
   add() {
@@ -519,17 +587,22 @@ class PowerUp {
         projSize = 10;
       } else if (this.type == 1) {
         playerSpeed = 3;
-        playerCol = "rgb(255, 255, 255)";
-        playerStroke = "rgb(0, 255, 255)";
+        playerCol = "rgba(255, 255, 255, .5)";
+        playerStroke = "rgb(255, 255, 255)";
       } else if (this.type == 2) {
         rapidFire = false;
       } else if (this.type == 3) {
         invincibleProjectiles = false;
-        projectileCol = "rgb(0, 255, 255)";
+        projectileCol = "rgba(0, 255, 255, .5)";
+        projectileStroke = "rgb(0, 255, 255)";
       } else if (this.type == 4) {
         projSpeed = 13;
-        projectileCol = "rgba(0, 255, 255, 0.5)";
-        projectileStroke = "rgba(0, 255, 255, 0.5)";
+        projectileCol = "rgba(0, 255, 255, .5)";
+        projectileStroke = "rgb(0, 255, 255)";
+      } else if (this.type == 5) {
+        homingProjectiles = false;
+        projectileCol = "rgba(0, 255, 255, .5)";
+        projectileStroke = "rgb(0, 255, 255)";
       }
       powerUpArr.splice(this.i, 1);
     }
@@ -596,7 +669,6 @@ const runFrame = () => {
     createEnemy();
     player.update();
     let scoreDisplay = document.querySelector("#scoreDisplay");
-    console.log(ambientParticleArr.length);
     scoreDisplay.innerHTML = score;
     for (let i = ambientParticleArr.length - 1; i >= 0; i--) {
       ambientParticleArr[i].update(i);
@@ -627,11 +699,6 @@ const runFrame = () => {
 
 //animation function
 
-/*const animate = () => {
-  requestAnimationFrame(animate);
-  runFrame();
-};
-animate();*/
 const animate = () => {
   setInterval(function () {
     runFrame();
