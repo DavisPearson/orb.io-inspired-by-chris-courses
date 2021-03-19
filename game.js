@@ -686,9 +686,12 @@ class Boss {
     //type 0
 
     if (this.type == 0) {
-      this.damage -= damage / 2;
-    } else if (this.type == 1) {
-      this.damage -= damage / 4;
+      this.damage -= damage / (2 + player.hp / 75);
+    }
+
+    //type 1
+    else if (this.type == 1) {
+      this.damage -= damage / (4 + player.hp / 75);
     }
   }
   determineDirection() {
