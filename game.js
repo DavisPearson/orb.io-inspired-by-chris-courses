@@ -16,23 +16,23 @@ let neonBlue = "rgb(0, 255, 255)";
 let neonBlueLowAlpha = "rgba(0, 255, 255, .5)";
 let blackNoAlpha = "rgba(0,0,0,0)";
 
-let score = 25;
+let score = 0;
 let projSpeed = 13;
 let projSize = 10;
 let enemySpawnChance = 70;
-let powerUpSpawnChance = 55;
+let powerUpSpawnChance = 140;
 let enemySpeed = 6;
 let playerSpeed = 5;
 let particleSpeed = 23;
 let entityArr = [];
 let enemyArr = [];
-let particleArr = [];
-let powerUpEnemyArr = [];
 let powerUpArr = [];
+let particleArr = [];
 let ambientParticleArr = [];
-let ambientParticleSpeed = 3;
+let ambientParticleSpeed = 1.5;
 let particleDecay = 0.9;
 let particleAge = 30;
+let particleSize = 4;
 let gameOver = false;
 let enemySizeMin = 15;
 let enemySizeMax = 45;
@@ -56,41 +56,10 @@ let powerUpSpawnIndex = 0;
 let rapidFire = false;
 let invincibleProjectiles = false;
 let homingProjectiles = false;
+let projectileHomingIndex = 0;
 let doubleProjectiles = false;
 let bossIsActive = false;
-const powerUpTypeArr = [
-  0,
-  1,
-  2,
-  3,
-  4,
-  5,
-  6,
-  7,
-  8,
-  9,
-  10,
-  11,
-  12,
-  13,
-  14,
-  15,
-  16,
-  17,
-  18,
-  19,
-  20,
-  21,
-  22,
-  23,
-  24,
-  25,
-  26,
-  27,
-  28,
-  29,
-  30,
-];
+const powerUpTypeArr = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
 let tempArr = [];
 
 //colission detection function
@@ -106,7 +75,12 @@ const determineClosestObject = (x1, y1, array) => {
   for (let i = 0; i < array.length; i++) {
     tempArr.push(Math.pow(array[i].x - x1, 2) + Math.pow(array[i].y - y1, 2));
   }
-
+  if (tempArr.indexOf(Math.min(...tempArr)) == -1) {
+    console.log(enemyArr);
+    console.log(tempArr);
+    console.log(Math.min(...tempArr));
+    console.log(tempArr.indexOf(Math.min(...tempArr)));
+  }
   return tempArr.indexOf(Math.min(...tempArr));
 };
 
@@ -157,24 +131,30 @@ addEventListener("mouseup", function (event) {
   mouseDownIndex = 0;
   mouseIsDown = false;
 });
-addEventListener("keydown", function (event) {
+/*addEventListener("keydown", function (event) {
   if (event.key === "b") {
-    powerUpEnemyArr.push(new Boss(0));
+    enemyArr.push(new Boss(0));
     bossIsActive = true;
   }
-});
+});*/
 
 //particle function
 
 const spawnParticles = (x, y, col, itterations) => {
   for (let m = 0; m <= itterations; m++) {
-    let r = Math.floor(Math.random() * 4);
+    let r = Math.floor(Math.random() * particleSize);
     c.beginPath();
     c.arc(x, y, r, 0, Math.PI * 2, false);
     c.fillStyle = col;
     c.fill();
     let dx = (Math.random() - 0.5) * particleSpeed;
     let dy = (Math.random() - 0.5) * particleSpeed;
+    if (dx < -0.3 * particleSpeed || dx > 0.3 * particleSpeed) {
+      if (dy < -0.3 * particleSpeed || dy > 0.3 * particleSpeed) {
+        dx /= 2;
+        dy /= 2;
+      }
+    }
     particleArr.push(new Particle(x, y, r, col, dx, dy));
   }
 };
@@ -200,31 +180,18 @@ class Projectile {
     c.fill();
   }
   determineDirection() {
-    if (powerUpEnemyArr.length > 0 && this.age > 20) {
-      let index = determineClosestObject(this.x, this.y, powerUpEnemyArr);
-      if (powerUpEnemyArr[index]) {
-        let a = this.x - powerUpEnemyArr[index].x;
-        let b = this.y - powerUpEnemyArr[index].y;
-        let num = Math.atan2(a, b);
-        this.dx = Math.sin(num) * projSpeed * -1;
-        this.dy = Math.cos(num) * projSpeed * -1;
-        index = "";
-      }
-    } else if (enemyArr.length > 0 && this.age > 20) {
-      let index = determineClosestObject(this.x, this.y, enemyArr);
-      if (enemyArr[index]) {
-        let a = this.x - enemyArr[index].x;
-        let b = this.y - enemyArr[index].y;
-        let num = Math.atan2(a, b);
-        this.dx = Math.sin(num) * projSpeed * -1;
-        this.dy = Math.cos(num) * projSpeed * -1;
-        console.log(index);
-        index = "";
-      }
+    projectileHomingIndex = determineClosestObject(this.x, this.y, enemyArr);
+    if (projectileHomingIndex >= 0) {
+      let num = Math.atan2(
+        this.x - enemyArr[projectileHomingIndex].x,
+        this.y - enemyArr[projectileHomingIndex].y
+      );
+      this.dx = Math.sin(num) * projSpeed * -1;
+      this.dy = Math.cos(num) * projSpeed * -1;
     }
   }
   update(i) {
-    if (homingProjectiles === true) {
+    if (homingProjectiles == true && this.age > 20 && enemyArr.length >= 0) {
       this.determineDirection();
     }
     this.i = i;
@@ -250,28 +217,11 @@ class Projectile {
         enemyArr[l].r
       );
       if (projEnemyDist <= 0) {
-        spawnParticles(this.x, this.y, projectileCol, 3);
+        if (invincibleProjectiles !== true) {
+          spawnParticles(this.x, this.y, projectileCol, 3);
+          entityArr.splice(this.i, 1);
+        }
         enemyArr[l].shrink(this.r);
-        if (invincibleProjectiles === false) {
-          entityArr.splice(this.i, 1);
-        }
-      }
-    }
-    for (let l = powerUpEnemyArr.length - 1; l >= 0; l--) {
-      let projEnemyDist = colisionDetect(
-        this.x,
-        this.y,
-        this.r,
-        powerUpEnemyArr[l].x,
-        powerUpEnemyArr[l].y,
-        powerUpEnemyArr[l].r
-      );
-      if (projEnemyDist <= 0) {
-        spawnParticles(this.x, this.y, projectileCol, 3);
-        powerUpEnemyArr[l].shrink(this.r);
-        if (invincibleProjectiles === false) {
-          entityArr.splice(this.i, 1);
-        }
       }
     }
   }
@@ -322,34 +272,13 @@ const player = {
           enemyArr[k].r
         ) <= 0
       ) {
+        if (enemyArr[k].isBoss) {
+          enemySpawnChance = 70;
+          powerUpSpawnChance = 140;
+        }
         spawnParticles(enemyArr[k].x, enemyArr[k].y, enemyArr[k].col, 12);
         this.damage -= enemyArr[k].r / 2;
         enemyArr.splice(k, 1);
-      }
-    }
-    for (let k = powerUpEnemyArr.length - 1; k >= 0; k--) {
-      if (
-        colisionDetect(
-          this.x,
-          this.y,
-          this.r,
-          powerUpEnemyArr[k].x,
-          powerUpEnemyArr[k].y,
-          powerUpEnemyArr[k].r
-        ) <= 0
-      ) {
-        spawnParticles(
-          powerUpEnemyArr[k].x,
-          powerUpEnemyArr[k].y,
-          powerUpEnemyArr[k].col,
-          12
-        );
-        if (powerUpEnemyArr[k].isBoss) {
-          enemySpawnChance = 70;
-          powerUpSpawnChance = 55;
-        }
-        this.damage -= powerUpEnemyArr[k].r / 2;
-        powerUpEnemyArr.splice(k, 1);
       }
     }
     if (this.damage < this.hp) {
@@ -553,24 +482,19 @@ const createEnemy = () => {
   }
 
   // powerup enemy
-  else if (k == 1) {
-    let m = Math.floor(Math.random() * powerUpSpawnChance);
 
-    if (m <= powerUpTypeArr.length - 1) {
-      let r =
+  let n = Math.floor(Math.random() * powerUpSpawnChance);
+  if (n == 1) {
+    let m = Math.floor((Math.random() * powerUpSpawnChance) / 4);
+    enemyArr.push(
+      new PowerUpEnemy(
+        Math.floor(Math.random() * 2) * window.innerWidth,
+        Math.random() * window.innerHeight,
         Math.floor(Math.random() * (enemySizeMax - enemySizeMin)) +
-        enemySizeMin;
-      let y = Math.random() * window.innerHeight;
-      let x = Math.floor(Math.random() * 2) * window.innerWidth;
-      if (m > 7) {
-        powerUpEnemyArr.push(new PowerUpEnemy(x, y, r, m));
-      } else if (m <= 7) {
-        if (powerUpSpawnIndex > 100) {
-          powerUpEnemyArr.push(new PowerUpEnemy(x, y, r, m));
-          powerUpSpawnIndex = 0;
-        }
-      }
-    }
+          enemySizeMin,
+        m
+      )
+    );
   }
 };
 
@@ -586,46 +510,31 @@ class PowerUpEnemy {
     this.type = type;
     this.damage = r;
     this.age = 0;
-    if (this.type == 31) {
+    if (this.type == 8) {
       this.r *= 3;
       this.damage *= 3;
     }
   }
   determineDirection() {
-    if (this.type !== 32) {
+    if (this.type >= powerUpTypeArr.length) {
       let a = this.x - player.x;
       let b = this.y - player.y;
       let num = Math.atan2(a, b);
       this.dx = Math.sin(num) * powerUpSpeed;
       this.dy = Math.cos(num) * powerUpSpeed;
-      if (this.type <= 6) {
-        this.dx *= 1.5;
-        this.dy *= 1.5;
-      } else if (this.type == 31) {
-        this.dx *= 0.5;
-        this.dy *= 0.5;
-        if (this.age % 75 == 0) {
-          powerUpEnemyArr.push(
-            new PowerUpEnemy(
-              this.x,
-              this.y,
-              15,
-              Math.floor(Math.random() * powerUpTypeArr.length)
-            )
-          );
-        }
-        this.age++;
-      } else if (this.type == 100) {
-        this.dx *= 2.2;
-        this.dy *= 1.5;
-      }
-    } else if (this.type == 32) {
+    } else if (this.type < powerUpTypeArr.length) {
       if (this.originalX == 0) {
-        this.dx = -powerUpSpeed * 2;
-        this.dy = 0;
+        this.dx = -powerUpSpeed;
+        this.dy = Math.sin(this.age / 15) * 5;
       } else if (this.originalX == window.innerWidth) {
-        this.dx = powerUpSpeed * 2;
-        this.dy = 0;
+        this.dx = powerUpSpeed;
+        this.dy = Math.sin(this.age / 15) * 5;
+      } else {
+        let a = this.x - player.x;
+        let b = this.y - player.y;
+        let num = Math.atan2(a, b);
+        this.dx = Math.sin(num) * powerUpSpeed;
+        this.dy = Math.cos(num) * powerUpSpeed;
       }
     }
   }
@@ -633,12 +542,9 @@ class PowerUpEnemy {
     if (this.type <= 7) {
       this.col = blackNoAlpha;
       this.stroke = neonBlue;
-    } else if (this.type == 31) {
+    } else if (this.type == 8) {
       this.col = blackNoAlpha;
       this.stroke = "rgb(155, 50, 168)";
-    } else if (this.type == 32) {
-      this.col = blackNoAlpha;
-      this.stroke = white;
     } else {
       this.col = blackNoAlpha;
       this.stroke = yellow;
@@ -660,25 +566,31 @@ class PowerUpEnemy {
     this.x -= this.dx;
     this.y -= this.dy;
     this.draw();
-
+    this.age++;
+    if (this.type == 8 && this.age % 100 == 0) {
+      enemyArr.push(
+        new PowerUpEnemy(
+          this.x,
+          this.y,
+          15,
+          Math.floor(Math.random() * powerUpTypeArr.length)
+        )
+      );
+    }
     if (
       this.y + 200 < 0 ||
       this.y - 200 > window.innerHeight ||
       this.x + 200 < 0 ||
       this.x - 200 > window.innerWidth
     ) {
-      powerUpEnemyArr.splice(this.i, 1);
+      enemyArr.splice(this.i, 1);
     }
     if (this.r > this.damage) {
       this.r -= 2;
     }
-    if (this.r <= 10) {
-      powerUpEnemyArr.splice(this.i, 1);
+    if (this.r <= 7) {
+      enemyArr.splice(this.i, 1);
       powerUpArr.push(new PowerUp(this.type));
-      if (this.type == 32) {
-        powerUpArr.push(new PowerUp(Math.floor(Math.random() * 7)));
-        powerUpArr.push(new PowerUp(Math.floor(Math.random() * 7)));
-      }
       spawnParticles(this.x, this.y, this.stroke, 20);
       player.hp += 1;
       player.damage += 1;
@@ -756,15 +668,51 @@ class Boss {
     if (this.type == 1) {
       this.dx = 0;
       this.dy = 0;
-      if (this.age % 100 == 0 && this.age !== 200) {
+      if (this.age == 100) {
         spawnParticles(this.x, this.y, this.stroke, 60);
-        powerUpEnemyArr.push(new PowerUpEnemy(this.x, this.y, 10, 21));
-        this.x = window.innerWidth - this.x;
-      }
-      if (this.age % 200 == 0) {
+        enemyArr.push(
+          new PowerUpEnemy(
+            this.x,
+            this.y,
+            20,
+            Math.floor(Math.random() * powerUpTypeArr.length)
+          )
+        );
+        this.x = window.innerWidth - 200;
+      } else if (this.age == 200) {
         spawnParticles(this.x, this.y, this.stroke, 60);
-        powerUpEnemyArr.push(new PowerUpEnemy(this.x, this.y, 10, 21));
-        this.y = window.innerHeight - this.y;
+        enemyArr.push(
+          new PowerUpEnemy(
+            this.x,
+            this.y,
+            20,
+            Math.floor(Math.random() * powerUpTypeArr.length)
+          )
+        );
+        this.y = window.innerHeight - 200;
+      } else if (this.age == 300) {
+        spawnParticles(this.x, this.y, this.stroke, 60);
+        enemyArr.push(
+          new PowerUpEnemy(
+            this.x,
+            this.y,
+            20,
+            Math.floor(Math.random() * powerUpTypeArr.length)
+          )
+        );
+        this.x = 200;
+      } else if (this.age == 400) {
+        spawnParticles(this.x, this.y, this.stroke, 60);
+        enemyArr.push(
+          new PowerUpEnemy(
+            this.x,
+            this.y,
+            20,
+            Math.floor(Math.random() * powerUpTypeArr.length)
+          )
+        );
+        this.y = 200;
+        this.age = 0;
       }
     }
   }
@@ -777,7 +725,7 @@ class Boss {
         enemyArr.push(new Enemy(this.x, this.y, 30, magentaLowAlpha));
       }
       if (this.age % 110 == 0) {
-        powerUpEnemyArr.push(
+        enemyArr.push(
           new PowerUpEnemy(
             this.x,
             this.y,
@@ -789,18 +737,8 @@ class Boss {
     }
 
     //type 1
-
-    if (this.type == 1) {
-      if (this.age % 60 == 0) {
-        powerUpEnemyArr.push(
-          new PowerUpEnemy(
-            this.x,
-            this.y,
-            15,
-            Math.floor(Math.random() * powerUpTypeArr.length)
-          )
-        );
-      }
+    else if (this.type == 1 && this.age % 25 == 0 && this.age % 100 !== 0) {
+      enemyArr.push(new PowerUpEnemy(this.x, this.y, 15, 20));
     }
   }
   update(i) {
@@ -812,18 +750,22 @@ class Boss {
     this.draw();
     this.shoot();
     invincibleProjectiles = false;
-
+    bossIsActive = true;
     if (this.r > this.damage) {
       this.r -= 2;
     }
     if (this.r <= 10) {
-      spawnParticles(this.x, this.y, this.col, 20);
-      powerUpEnemyArr.splice(this.i, 1);
+      particleSpeed = 75;
+      particleSize = 10;
+      spawnParticles(this.x, this.y, this.stroke, 200);
+      particleSpeed = 23;
+      particleSize = 4;
+      enemyArr.splice(this.i, 1);
       player.hp += 1;
       player.damage += 1;
       score += 1;
       enemySpawnChance = 70;
-      powerUpSpawnChance = 55;
+      powerUpSpawnChance = 140;
       bossIsActive = false;
     }
   }
@@ -885,9 +827,6 @@ class PowerUp {
       this.age++;
     }
   }
-  add() {
-    powerUpArr.push(this.type);
-  }
   update(i) {
     this.i = i;
     if (this.age <= powerUpDurration) {
@@ -910,9 +849,9 @@ class PowerUp {
         projectileCol = neonBlueLowAlpha;
         projectileStroke = neonBlue;
       } else if (this.type == 5) {
-        homingProjectiles = false;
         projectileCol = neonBlueLowAlpha;
         projectileStroke = neonBlue;
+        homingProjectiles = false;
       } else if (this.type == 6) {
         doubleProjectiles = false;
       } else if (this.type == 7) {
@@ -929,10 +868,9 @@ class AmbientParticle {
   constructor(dx, dy) {
     this.dx = dx;
     this.dy = dy;
-    this.x = window.innerWidth / 2 + dx * 20;
-    this.y = window.innerHeight / 2 + dy * 20;
     this.r = 1;
     this.col = ambientParticleColor;
+    this.type = Math.floor(Math.random() * 6);
   }
   draw() {
     c.beginPath();
@@ -942,9 +880,24 @@ class AmbientParticle {
   }
   update(i) {
     this.i = i;
-    this.dx *= 1.001;
-    this.dy *= 1.001;
-    this.r *= 1.01;
+    if (this.type <= 2) {
+      this.dx *= 1.00001;
+      this.dy *= 1.000001;
+      this.x = window.innerWidth / 2 + this.dx * 150;
+      this.y = window.innerHeight / 2 + this.dy * 150;
+    } else if (this.type == 3 || this.type == 4) {
+      this.dx *= 1.001;
+      this.dy *= 1.0001;
+      this.r *= 1.001;
+      this.x = window.innerWidth / 2 + this.dx * 100;
+      this.y = window.innerHeight / 2 + this.dy * 100;
+    } else {
+      this.dx *= 1.005;
+      this.dy *= 1.0005;
+      this.r *= 1.01;
+      this.x = window.innerWidth / 2 + this.dx * 50;
+      this.y = window.innerHeight / 2 + this.dy * 50;
+    }
     this.dx *= 1 + this.r / 150;
     this.dy *= 1 + this.r / 150;
     this.x += this.dx;
@@ -982,7 +935,7 @@ const runWave = () => {
     powerUpSpawnChance = 4000;
   }
   if (waveIndex == 400) {
-    enemySpawnChance = 17;
+    enemySpawnChance = 20;
     powerUpSpawnChance = 60;
   }
   waveIndex++;
@@ -991,10 +944,9 @@ const runWave = () => {
     ambientParticleColor = "white";
     enemySpawnChance = 100000;
     powerUpSpawnChance = 100000;
-    powerUpEnemyArr.push(new Boss(Math.floor(Math.random() * 2)));
+    enemyArr.push(new Boss(Math.floor(Math.random() * 2)));
     numberOfWaves++;
     bossIsActive = true;
-    powerUpTypeArr.push(powerUpTypeArr.length);
     shouldRunWave = false;
   }
 };
@@ -1029,9 +981,6 @@ const runFrame = () => {
     }
     for (let i = powerUpArr.length - 1; i >= 0; i--) {
       powerUpArr[i].update(i);
-    }
-    for (let i = powerUpEnemyArr.length - 1; i >= 0; i--) {
-      powerUpEnemyArr[i].update(i);
     }
     if (rapidFire === true) {
       let randomX = (Math.random() - 0.5) * projSpeed;
