@@ -26,7 +26,7 @@ let projSpeed = 13;
 let projSize = 10;
 let enemySpawnChance = 70;
 let powerUpSpawnChance = 140;
-let enemySpeed = 6;
+let enemySpeed = 5;
 let playerSpeed = 5;
 let particleSpeed = 23;
 let entityArr = [];
@@ -45,7 +45,7 @@ let playerSize = 20;
 let playerCol = whiteMidAlpha;
 let playerStroke = white;
 let powerUpDurration = 350;
-let powerUpSpeed = 7;
+let powerUpSpeed = 5;
 let waveIndex = 0;
 let numberOfWaves = 0;
 let mouseDownIndex = 0;
@@ -1285,11 +1285,11 @@ const runFrame = () => {
     if (shouldRunWaveMessage2) {
       waveIncomingMessage2();
     }
-    if (score / 1000 + 6 > enemySpeed) {
+    if (score / 2000 + 5 > enemySpeed) {
       enemySpeed++;
       powerUpSpeed++;
-      enemySizeMax += 4;
-      enemySizeMin += 4;
+      enemySizeMax += 1;
+      enemySizeMin += 1;
     }
   } else if (gameOver) {
     deathMessage();
