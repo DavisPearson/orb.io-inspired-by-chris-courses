@@ -1,4 +1,5 @@
 const canvas = document.getElementById("myCanvas");
+const gameElement = document.getElementById("game");
 canvas.height = window.innerHeight;
 canvas.width = window.innerWidth;
 const c = canvas.getContext("2d");
@@ -72,6 +73,7 @@ let shouldRunWaveMessage2 = false;
 let shouldAnimate = false;
 let shouldRunStartGameMessage = true;
 let startGameFrameIndex = 0;
+let fullScreen = false;
 
 //colission detection function
 
@@ -198,7 +200,7 @@ addEventListener("keydown", function (event) {
       player.hp = playerSize;
       player.damage = playerSize;
       player.x = window.innerWidth / 2;
-      player.y = winfow.innerHeight / 2;
+      player.y = window.innerHeight / 2;
     } else if (shouldRunStartGameMessage) {
       shouldRunStartGameMessage = false;
       shouldAnimate = true;
@@ -206,6 +208,15 @@ addEventListener("keydown", function (event) {
     } else {
       shouldAnimate = true;
     }
+  }
+});
+addEventListener("keydown", function (event) {
+  if (event.key === "f" && fullScreen == false) {
+    gameElement.requestFullscreen();
+    fullScreen = true;
+  } else if (event.key === "f") {
+    document.exitFullscreen();
+    fullScreen = false;
   }
 });
 
@@ -341,13 +352,9 @@ const player = {
           enemyArr[k].x,
           enemyArr[k].y,
           enemyArr[k].r
-        ) <= 0
+        ) <= 0 &&
+        enemyArr[k].isBoss !== true
       ) {
-        if (enemyArr[k].isBoss) {
-          bossIsActive = false;
-          enemySpawnChance = 70;
-          powerUpSpawnChance = 140;
-        }
         spawnParticles(enemyArr[k].x, enemyArr[k].y, enemyArr[k].col, 12);
         this.damage -= enemyArr[k].r / 2;
         enemyArr.splice(k, 1);
@@ -594,6 +601,7 @@ class PowerUpEnemy {
     this.type = type;
     this.damage = r;
     this.age = 0;
+    this.sinIndex = (Math.random() - 0.5) * 30;
     if (this.type == 8) {
       this.r *= 3;
       this.damage *= 3;
@@ -609,10 +617,10 @@ class PowerUpEnemy {
     } else if (this.type < powerUpTypeArr.length) {
       if (this.originalX == 0) {
         this.dx = -powerUpSpeed * 1.5;
-        this.dy = Math.sin(this.age / 15) * 10;
+        this.dy = Math.sin(this.age / 15) * this.sinIndex;
       } else if (this.originalX == window.innerWidth) {
         this.dx = powerUpSpeed * 1.5;
-        this.dy = Math.sin(this.age / 15) * 10;
+        this.dy = Math.sin(this.age / 15) * this.sinIndex;
       } else {
         let a = this.x - player.x;
         let b = this.y - player.y;
@@ -651,7 +659,7 @@ class PowerUpEnemy {
     this.y -= this.dy;
     this.draw();
     this.age++;
-    if (this.type == 8 && this.age % 100 == 0) {
+    if (this.type == 8 && this.age % 40 == 0) {
       enemyArr.push(
         new PowerUpEnemy(
           this.x,
@@ -1182,7 +1190,12 @@ const deathMessage = () => {
   c.font = "150px Impact";
   c.textAlign = "center";
   c.fillText("GAME OVER", window.innerWidth / 2, window.innerHeight / 2);
-  c.font = "150px Arial";
+  c.font = "50px Impact";
+  c.fillText(
+    "PRESS SPACE",
+    window.innerWidth / 2,
+    window.innerHeight / 2 + 150
+  );
 };
 
 //start game message
@@ -1192,6 +1205,12 @@ const startGameMessage = () => {
   c.font = "50px Impact";
   c.textAlign = "center";
   c.fillText("PRESS SPACE", window.innerWidth / 2, window.innerHeight / 2);
+  c.font = "25px Impact";
+  c.fillText(
+    "PRESS 'F' FOR FULL SCREEN",
+    window.innerWidth / 2,
+    window.innerHeight / 2 + 150
+  );
   c.font = "150px Impact";
   c.fillText("ORB.IO", window.innerWidth / 2, window.innerHeight / 2 - 150);
 };
@@ -1205,6 +1224,13 @@ const pauseMessage = () => {
   c.fillText("PAUSED", window.innerWidth / 2, window.innerHeight / 2);
 };
 
+//score message
+const scoreMessage = () => {
+  c.fillStyle = "rgb(255, 255, 255)";
+  c.font = "40px Impact";
+  c.textAlign = "center";
+  c.fillText("score: " + score.toString(), window.innerWidth / 2, 50);
+};
 //game function
 
 const runFrame = () => {
@@ -1221,8 +1247,6 @@ const runFrame = () => {
     c.fillRect(0, 0, canvas.width, canvas.height);
     createEnemy();
     powerUpSpawnIndex++;
-    let scoreDisplay = document.querySelector("#scoreDisplay");
-    scoreDisplay.innerHTML = score;
     mouseDownIndex++;
     if (mouseIsDown && mouseDownIndex % autoFireIndex == 0) {
       autoFire(mouseClientX, mouseClientY);
@@ -1251,6 +1275,7 @@ const runFrame = () => {
     if (runWaveIndex == 50 && bossIsActive == false) {
       shouldRunWave = true;
     }
+    scoreMessage();
     if (shouldRunWave) {
       runWave();
     }
@@ -1260,13 +1285,11 @@ const runFrame = () => {
     if (shouldRunWaveMessage2) {
       waveIncomingMessage2();
     }
-    if (player.hp / 33 + 6 > enemySpeed) {
+    if (score / 1000 + 6 > enemySpeed) {
       enemySpeed++;
       powerUpSpeed++;
-    }
-    if (player.hp / 33 + 6 <= enemySpeed) {
-      enemySpeed--;
-      powerUpSpeed--;
+      enemySizeMax += 4;
+      enemySizeMin += 4;
     }
   } else if (gameOver) {
     deathMessage();
@@ -1283,7 +1306,7 @@ const startGameFrame = () => {
       ambientParticleArr[i].update(i);
     }
     startGameFrameIndex++;
-    if (startGameFrameIndex % 50 == 0) {
+    if (startGameFrameIndex % 30 == 0) {
       startGameFrameIndex = 0;
       enemyArr.push(
         new PowerUpEnemy(
