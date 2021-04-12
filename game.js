@@ -8,13 +8,14 @@ const c = canvas.getContext("2d");
 let red = "rgb(255, 3, 3)";
 let redLowAlpha = "rgba(255, 3, 3, .5)";
 let yellow = "rgb(206, 245, 66)";
-let YellowLowAlpha = "rgba(206, 245, 66, .5)";
+let yellowMidAlpha = "rgba(206, 245, 66, .5)";
+let yellowLowAlpha = "rgba(206, 245, 66, .05)";
 let magenta = "rgb(235, 33, 134)";
 let magentaMidAlpha = "rgba(235, 33, 134, .5)";
 let magentaLowAlpha = "rgba(235, 33, 134, .1)";
 let white = "rgb(255, 255, 255)";
 let whiteMidAlpha = "rgba(255,255,255, .5)";
-let whiteLowAlpha = "rgba(255, 255, 255, .2)";
+let whiteLowAlpha = "rgba(255, 255, 255, .05)";
 let neonBlue = "rgb(0, 255, 255)";
 let neonBlueLowAlpha = "rgba(0, 255, 255, .2)";
 let neonGreen = "rgb(0, 252, 38)";
@@ -148,7 +149,7 @@ addEventListener("mouseup", function (event) {
 });
 addEventListener("keydown", function (event) {
   if (event.key === "b") {
-    enemyArr.push(new Boss(0));
+    enemyArr.push(new Boss(2));
     bossIsActive = true;
   }
 });
@@ -223,21 +224,30 @@ addEventListener("keydown", function (event) {
 //particle function
 
 const spawnParticles = (x, y, col, itterations) => {
-  for (let m = 0; m <= itterations; m++) {
-    let r = Math.floor(Math.random() * particleSize);
-    c.beginPath();
-    c.arc(x, y, r, 0, Math.PI * 2, false);
-    c.fillStyle = col;
-    c.fill();
-    let dx = (Math.random() - 0.5) * particleSpeed;
-    let dy = (Math.random() - 0.5) * particleSpeed;
-    if (dx < -0.3 * particleSpeed || dx > 0.3 * particleSpeed) {
-      if (dy < -0.3 * particleSpeed || dy > 0.3 * particleSpeed) {
-        dx /= 2;
-        dy /= 2;
+  if (itterations >= -1) {
+    for (let m = 0; m <= itterations; m++) {
+      let r = Math.floor(Math.random() * particleSize);
+      c.beginPath();
+      c.arc(x, y, r, 0, Math.PI * 2, false);
+      c.fillStyle = col;
+      c.fill();
+      let dx = (Math.random() - 0.5) * particleSpeed;
+      let dy = (Math.random() - 0.5) * particleSpeed;
+      if (dx < -0.3 * particleSpeed || dx > 0.3 * particleSpeed) {
+        if (dy < -0.3 * particleSpeed || dy > 0.3 * particleSpeed) {
+          dx /= 2;
+          dy /= 2;
+        }
       }
+      particleArr.push(new Particle(x, y, r, col, dx, dy));
     }
-    particleArr.push(new Particle(x, y, r, col, dx, dy));
+  } else {
+    c.fillStyle = white;
+    c.font = "20px Impact";
+    c.textAlign = "center";
+    c.fillText(itterations.toString(), x, y);
+    r = itterations;
+    particleArr.push(new Particle(x, y, r, col, 0, -particleSpeed / 2));
   }
 };
 
@@ -442,10 +452,17 @@ class Particle {
     this.age = 0;
   }
   draw() {
-    c.beginPath();
-    c.arc(this.x, this.y, this.r, 0, Math.PI * 2, false);
-    c.fillStyle = this.col;
-    c.fill();
+    if (this.r >= -1) {
+      c.beginPath();
+      c.arc(this.x, this.y, this.r, 0, Math.PI * 2, false);
+      c.fillStyle = this.col;
+      c.fill();
+    } else {
+      c.fillStyle = white;
+      c.font = "40px Impact";
+      c.textAlign = "center";
+      c.fillText(this.r.toString(), this.x, this.y);
+    }
   }
   update(i) {
     this.i = i;
@@ -718,9 +735,9 @@ class Boss {
     else if (this.type == 1) {
       this.x = 200;
       this.y = 200;
-      this.r = 70;
+      this.r = 100;
       this.damage = this.r;
-      this.col = YellowLowAlpha;
+      this.col = yellowLowAlpha;
       this.stroke = yellow;
     }
 
@@ -759,12 +776,12 @@ class Boss {
     //type 0
 
     if (this.type == 0) {
-      this.damage -= damage / (2 + player.hp / 20);
+      this.damage -= damage / (3 + player.hp / 20);
     }
 
     //type 1
     else if (this.type == 1) {
-      this.damage -= damage / (4 + player.hp / 20);
+      this.damage -= damage / (3 + player.hp / 20);
     }
 
     //type 2
@@ -773,7 +790,7 @@ class Boss {
       this.damage -= damage / (3 + player.hp / 20);
     } else if (this.type == 3) {
       console.log(this.damage);
-      this.damage -= damage / (5 + player.hp / 20);
+      this.damage -= damage / (3 + player.hp / 20);
     }
   }
   determineDirection() {
@@ -844,6 +861,7 @@ class Boss {
     else if (this.type == 2) {
       if (this.x + this.r > window.innerWidth) {
         this.moveLeft = true;
+        spawnParticles(window.innerWidth, this.y, this.stroke, 100);
         enemyArr.push(
           new PowerUpEnemy(
             this.x,
@@ -855,6 +873,7 @@ class Boss {
       } else if (this.x - this.r < 0) {
         this.moveLeft = false;
         if (this.x - this.r > -13) {
+          spawnParticles(0, this.y, this.stroke, 100);
           enemyArr.push(
             new PowerUpEnemy(
               this.x,
@@ -898,6 +917,15 @@ class Boss {
         this.dx = 10;
         this.dy = 0;
       }
+      if (this.x + this.r == window.innerWidth) {
+        spawnParticles(window.innerWidth, this.y, this.stroke, 1);
+      } else if (this.y + this.r == window.innerHeight) {
+        spawnParticles(this.x, window.innerHeight, this.stroke, 1);
+      } else if (this.x - this.r == 0) {
+        spawnParticles(0, this.y, this.stroke, 1);
+      } else if (this.y - this.r == 0) {
+        spawnParticles(this.x, 0, this.stroke, 1);
+      }
     }
   }
 
@@ -931,7 +959,6 @@ class Boss {
 
     //type 2
     else if (this.type == 2 && this.age % 10 == 0) {
-      spawnParticles(this.x, this.y, this.stroke, 5);
       enemyArr.push(new Enemy(this.x, this.y, 12, neonGreen));
     }
 
@@ -992,6 +1019,7 @@ class PowerUp {
     if (this.type === 0) {
       if (this.age == 0) {
         projSize = 30;
+        spawnParticles(player.x, player.y, white, "LARGE ORBS");
       }
       this.age++;
     } else if (this.type === 1) {
@@ -999,18 +1027,21 @@ class PowerUp {
         playerSpeed = 9;
         playerStroke = magenta;
         playerCol = magentaMidAlpha;
+        spawnParticles(player.x, player.y, white, "FAST PLAYER");
       }
       this.age += 0.5;
     } else if (this.type === 2) {
       if (this.age == 0) {
         rapidFire = true;
+        spawnParticles(player.x, player.y, white, "RAPID FIRE");
       }
       this.age += 2;
     } else if (this.type === 3 && bossIsActive == false) {
       if (this.age == 0) {
         invincibleProjectiles = true;
-        projectileCol = YellowLowAlpha;
+        projectileCol = yellowLowAlpha;
         projectileStroke = yellow;
+        spawnParticles(player.x, player.y, white, "INVINCIBLE ORBS");
       }
       this.age++;
     } else if (this.type == 4) {
@@ -1018,6 +1049,7 @@ class PowerUp {
         projSpeed = 26;
         projectileStroke = magenta;
         projectileCol = magentaMidAlpha;
+        spawnParticles(player.x, player.y, white, "FAST ORBS");
       }
       this.age += 0.6;
     } else if (this.type == 5) {
@@ -1025,16 +1057,19 @@ class PowerUp {
         homingProjectiles = true;
         projectileCol = redLowAlpha;
         projectileStroke = red;
+        spawnParticles(player.x, player.y, white, "TRACKING ORBS");
       }
       this.age++;
     } else if (this.type == 6) {
       if (this.age == 0) {
         doubleProjectiles = true;
+        spawnParticles(player.x, player.y, white, "DOUBLE ORBS");
       }
       this.age += 0.6;
     } else if (this.type == 7) {
       if (this.age == 0) {
         autoFireIndex = 4;
+        spawnParticles(player.x, player.y, white, "AUTO FIRE");
       }
       this.age++;
     }
@@ -1254,7 +1289,6 @@ const runFrame = () => {
     for (let i = ambientParticleArr.length - 1; i >= 0; i--) {
       ambientParticleArr[i].update(i);
     }
-    player.update();
     for (let i = entityArr.length - 1; i >= 0; i--) {
       entityArr[i].update(i);
     }
@@ -1267,6 +1301,7 @@ const runFrame = () => {
     for (let i = powerUpArr.length - 1; i >= 0; i--) {
       powerUpArr[i].update(i);
     }
+    player.update();
     if (rapidFire === true) {
       let randomX = (Math.random() - 0.5) * projSpeed;
       let randomY = (Math.random() - 0.5) * projSpeed;
@@ -1304,6 +1339,9 @@ const startGameFrame = () => {
     ambientBackground();
     for (let i = ambientParticleArr.length - 1; i >= 0; i--) {
       ambientParticleArr[i].update(i);
+    }
+    for (let i = particleArr.length - 1; i >= 0; i--) {
+      particleArr[i].update(i);
     }
     startGameFrameIndex++;
     if (startGameFrameIndex % 30 == 0) {
