@@ -65,6 +65,7 @@ let homingProjectiles = false;
 let projectileHomingIndex = 0;
 let doubleProjectiles = false;
 let bossIsActive = false;
+let nextBoss = 0;
 let powerUpTypeArr = [0, 1, 2, 3, 4, 5, 6, 7, 8];
 let bossTypeArr = [0, 1, 2, 3];
 let tempArr = [];
@@ -88,12 +89,6 @@ const determineClosestObject = (x1, y1, array) => {
   tempArr = [];
   for (let i = 0; i < array.length; i++) {
     tempArr.push(Math.pow(array[i].x - x1, 2) + Math.pow(array[i].y - y1, 2));
-  }
-  if (tempArr.indexOf(Math.min(...tempArr)) == -1) {
-    console.log(enemyArr);
-    console.log(tempArr);
-    console.log(Math.min(...tempArr));
-    console.log(tempArr.indexOf(Math.min(...tempArr)));
   }
   return tempArr.indexOf(Math.min(...tempArr));
 };
@@ -161,8 +156,6 @@ addEventListener("keydown", function (event) {
       score = 0;
       projSpeed = 13;
       projSize = 10;
-      enemySpawnChance = 70;
-      powerUpSpawnChance = 140;
       enemySpeed = 6;
       playerSpeed = 5;
       entityArr = [];
@@ -170,6 +163,8 @@ addEventListener("keydown", function (event) {
       powerUpArr = [];
       particleArr = [];
       ambientParticleArr = [];
+      enemySpawnChance = 70;
+      powerUpSpawnChance = 140;
       gameOver = false;
       enemySizeMin = 15;
       enemySizeMax = 45;
@@ -469,7 +464,11 @@ class Particle {
     this.draw();
     this.x += this.dx;
     this.y += this.dy;
-    this.age += 1;
+    if (this.r >= -1) {
+      this.age++;
+    } else {
+      this.age += 0.3;
+    }
     this.dx *= particleDecay;
     this.dy *= particleDecay;
     if (this.age >= particleAge) {
@@ -786,10 +785,8 @@ class Boss {
 
     //type 2
     else if (this.type == 2) {
-      console.log(this.damage);
       this.damage -= damage / (3 + player.hp / 20);
     } else if (this.type == 3) {
-      console.log(this.damage);
       this.damage -= damage / (3 + player.hp / 20);
     }
   }
@@ -993,14 +990,23 @@ class Boss {
       score += 2;
     }
     if (this.r <= 10) {
+      if (this.type == 0) {
+        nextBoss = 1;
+      } else if (this.type == 1) {
+        nextBoss = 2;
+      } else if (this.type == 2) {
+        nextBoss = 3;
+      } else if (this.type == 3) {
+        nextBoss = 0;
+      }
       particleSpeed = 75;
       particleSize = 10;
       spawnParticles(this.x, this.y, this.stroke, 200);
       particleSpeed = 23;
       particleSize = 4;
       enemyArr.splice(this.i, 1);
-      player.hp += 1;
-      player.damage += 1;
+      player.hp += 20;
+      player.damage += 20;
 
       runWaveIndex = 0;
       enemySpawnChance = 70;
@@ -1018,59 +1024,60 @@ class PowerUp {
   run() {
     if (this.type === 0) {
       if (this.age == 0) {
-        projSize = 30;
         spawnParticles(player.x, player.y, white, "LARGE ORBS");
       }
+      projSize = 30;
       this.age++;
     } else if (this.type === 1) {
       if (this.age == 0) {
-        playerSpeed = 9;
-        playerStroke = magenta;
-        playerCol = magentaMidAlpha;
         spawnParticles(player.x, player.y, white, "FAST PLAYER");
       }
+      playerSpeed = 9;
+      playerStroke = magenta;
+      playerCol = magentaMidAlpha;
       this.age += 0.5;
     } else if (this.type === 2) {
       if (this.age == 0) {
-        rapidFire = true;
         spawnParticles(player.x, player.y, white, "RAPID FIRE");
       }
+      rapidFire = true;
+
       this.age += 2;
     } else if (this.type === 3 && bossIsActive == false) {
       if (this.age == 0) {
-        invincibleProjectiles = true;
-        projectileCol = yellowLowAlpha;
-        projectileStroke = yellow;
         spawnParticles(player.x, player.y, white, "INVINCIBLE ORBS");
       }
+      invincibleProjectiles = true;
+      projectileCol = yellowLowAlpha;
+      projectileStroke = yellow;
       this.age++;
     } else if (this.type == 4) {
       if (this.age == 0) {
-        projSpeed = 26;
-        projectileStroke = magenta;
-        projectileCol = magentaMidAlpha;
         spawnParticles(player.x, player.y, white, "FAST ORBS");
       }
+      projSpeed = 26;
+      projectileStroke = magenta;
+      projectileCol = magentaMidAlpha;
       this.age += 0.6;
     } else if (this.type == 5) {
       if (this.age == 0) {
-        homingProjectiles = true;
-        projectileCol = redLowAlpha;
-        projectileStroke = red;
         spawnParticles(player.x, player.y, white, "TRACKING ORBS");
       }
+      homingProjectiles = true;
+      projectileCol = redLowAlpha;
+      projectileStroke = red;
       this.age++;
     } else if (this.type == 6) {
       if (this.age == 0) {
-        doubleProjectiles = true;
         spawnParticles(player.x, player.y, white, "DOUBLE ORBS");
       }
+      doubleProjectiles = true;
       this.age += 0.6;
     } else if (this.type == 7) {
       if (this.age == 0) {
-        autoFireIndex = 4;
         spawnParticles(player.x, player.y, white, "AUTO FIRE");
       }
+      autoFireIndex = 4;
       this.age++;
     }
   }
@@ -1195,7 +1202,7 @@ const runWave = () => {
     enemySpawnChance = 100000;
     powerUpSpawnChance = 100000;
   } else if (waveIndex == 2500) {
-    enemyArr.push(new Boss(Math.floor(Math.random() * bossTypeArr.length)));
+    enemyArr.push(new Boss(nextBoss));
     numberOfWaves++;
     bossIsActive = true;
     shouldRunWave = false;
@@ -1307,6 +1314,7 @@ const runFrame = () => {
       let randomY = (Math.random() - 0.5) * projSpeed;
       player.shoot(randomX, randomY);
     }
+    console.log(runWaveIndex);
     if (runWaveIndex == 50 && bossIsActive == false) {
       shouldRunWave = true;
     }
